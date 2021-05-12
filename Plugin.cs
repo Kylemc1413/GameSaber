@@ -47,9 +47,9 @@ namespace GameSaber
             if (songData == null) return;
             
             bool ticTacMap = songData.additionalDifficultyData._requirements.Contains("GameSaber");
-            if (!ticTacMap) return;
+          //  if (!ticTacMap) return;
             string path = Path.Combine(level.customLevelPath, "GameParams.json");
-            if (!File.Exists(path))
+            if (!File.Exists(path) && ticTacMap)
             {
                 BS_Utils.Gameplay.ScoreSubmission.DisableSubmission("Invalid GameSaber Params");
                 return;
@@ -57,32 +57,36 @@ namespace GameSaber
 
             GameParams mapParams = null;
             GameParams.DiffGameParams diffParams = null;
-            try
+            if(ticTacMap)
             {
-                mapParams = Newtonsoft.Json.JsonConvert.DeserializeObject<GameParams>(File.ReadAllText(path));
-                diffParams = mapParams.games.FirstOrDefault(x => x.beatmapCharacteristicName == songData._beatmapCharacteristicName && x.beatmapDifficultyName == songData._difficulty.SerializedName()); 
-                if(diffParams == null || diffParams.gameType == GameType.None)
+                try
+                {
+                    mapParams = Newtonsoft.Json.JsonConvert.DeserializeObject<GameParams>(File.ReadAllText(path));
+                    diffParams = mapParams.games.FirstOrDefault(x => x.beatmapCharacteristicName == songData._beatmapCharacteristicName && x.beatmapDifficultyName == songData._difficulty.SerializedName());
+                    if (diffParams == null || diffParams.gameType == GameType.None)
+                    {
+                        Logger.log.Error("Invalid GameParams, not initializing GameSaber");
+                        Logger.log.Error($"1 {songData._beatmapCharacteristicName} | {songData._difficulty.SerializedName()}");
+                        BS_Utils.Gameplay.ScoreSubmission.DisableSubmission("Invalid GameSaber Params");
+                        return;
+                    }
+                    if (diffParams.gameType == GameType.ConnectFour && !songData.additionalDifficultyData._requirements.Contains("Mapping Extensions"))
+                    {
+                        Logger.log.Error("Invalid Difficulty requirements, ConnectFour requires Mapping Extensions, not initializing GameSaber");
+                        Logger.log.Error($"in {songData._beatmapCharacteristicName} | {songData._difficulty.SerializedName()} Difficulty");
+                        BS_Utils.Gameplay.ScoreSubmission.DisableSubmission("Invalid GameSaber Params");
+                        return;
+                    }
+                }
+                catch (Exception ex)
                 {
                     Logger.log.Error("Invalid GameParams, not initializing GameSaber");
-                    Logger.log.Error($"1 {songData._beatmapCharacteristicName} | {songData._difficulty.SerializedName()}");
-                    BS_Utils.Gameplay.ScoreSubmission.DisableSubmission("Invalid GameSaber Params");
-                    return;
-                }
-                if(diffParams.gameType == GameType.ConnectFour && !songData.additionalDifficultyData._requirements.Contains("Mapping Extensions"))
-                {
-                    Logger.log.Error("Invalid Difficulty requirements, ConnectFour requires Mapping Extensions, not initializing GameSaber");
-                    Logger.log.Error($"in {songData._beatmapCharacteristicName} | {songData._difficulty.SerializedName()} Difficulty");
+                    Logger.log.Error($"2 {ex}");
                     BS_Utils.Gameplay.ScoreSubmission.DisableSubmission("Invalid GameSaber Params");
                     return;
                 }
             }
-            catch(Exception ex)
-            {
-                Logger.log.Error("Invalid GameParams, not initializing GameSaber");
-                Logger.log.Error($"2 {ex}");
-                BS_Utils.Gameplay.ScoreSubmission.DisableSubmission("Invalid GameSaber Params");
-                return;
-            }
+         
             SharedCoroutineStarter.instance.StartCoroutine(DelayInit(diffParams));
 
         }

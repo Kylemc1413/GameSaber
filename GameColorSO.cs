@@ -23,11 +23,11 @@ namespace GameSaber
         {
             get
             {
-                if(GameController._game != null && GameController.IsPlayerTurn)
+                if(GameController.mapParams != null && GameController._game != null && GameController.IsPlayerTurn)
                 {
                     return 0.9f * (GameController.playerType == PlayerType.First ? _colorB : _colorA);
                 }
-                else if(GameController._game != null && GameController._game.Started)
+                else if(GameController.mapParams != null && GameController._game != null && GameController._game.Started)
                 {
                     return GameController.playerType == PlayerType.First ? _colorA : _colorB;
                 }

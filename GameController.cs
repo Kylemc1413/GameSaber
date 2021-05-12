@@ -8,7 +8,7 @@ using Zenject;
 using IPA.Utilities;
 namespace GameSaber
 {
-    internal class GameController : MonoBehaviour
+    public class GameController : MonoBehaviour
     {
         //GameObjects
         StandardLevelFailedController levelFailController;
@@ -73,14 +73,20 @@ namespace GameSaber
                 Debug.Log($"Exception loading GameSaber {ex}");
                 return;
             }
+            if (mapParams != null)
+                Initialize();
+
+        }
+        public void Initialize()
+        {
+            if (mapParams == null)
+                return;
             _init = true;
             Plugin.Active = true;
             NewGame(true);
             BS_Utils.Utilities.BSEvents.noteWasCut += BSEvents_noteWasCut;
             BS_Utils.Utilities.BSEvents.noteWasMissed += BSEvents_noteWasMissed;
-
         }
-
         private void BSEvents_noteWasMissed(NoteData arg1, int arg2)
         {
             if (arg1 is GameNote)
@@ -115,6 +121,7 @@ namespace GameSaber
         }
         public void PlayerTurn(List<int> spaces)
         {
+            if (mapParams == null || _game == null) return;
             _currentSpaces = spaces;
             SpawnText("<#00FFFF>Your Turn</color>\n Current Board\n" + _game.GetGameText(), _game.TurnLength);
             //Update Beatmap with selection objects
@@ -131,6 +138,7 @@ namespace GameSaber
         }
         public void AiTurn(List<int> spaces)
         {
+            if (mapParams == null || _game == null) return;
             _currentSpaces = spaces;
             SpawnText("<#FF0000>Ai Turn</color>\n Current Board\n" + _game.GetGameText(), _game.TurnLength);
         }
@@ -201,10 +209,12 @@ namespace GameSaber
                 }
                 if (songAudio.time > mapParams.gameEndTime)
                 {
-                    NewGame(true);
+                    //  NewGame(true);
+                    _game = null;
                     _init = false;
+                    mapParams = null;
                     CleanBeatmap();
-                    SpawnText("Well Done!", 8f);
+                    SpawnText("Well Done!", 5f);
                 }
 
             }
@@ -293,7 +303,7 @@ namespace GameSaber
             List<BeatmapObjectData> objects;
             BeatmapLineData[] linesData = beatmapData.GetField<BeatmapLineData[], BeatmapData>("_beatmapLinesData");
             objects = linesData[0].beatmapObjectsData.ToList();
-            objects.RemoveAll(x => x is GameNote);
+            objects.RemoveAll(x => x is GameNote || x is GameObstacle);
             objects = objects.OrderBy(o => o.time).ToList();
             linesData[0].SetField<BeatmapLineData, List<BeatmapObjectData>>("_beatmapObjectsData", objects);
             beatmapData.SetField<BeatmapData, BeatmapLineData[]>("_beatmapLinesData", linesData);
