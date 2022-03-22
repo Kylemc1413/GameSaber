@@ -37,7 +37,8 @@ namespace GameSaber
     {
         public static void Postfix(ref GameNoteController __instance, ref BoxCuttableBySaber[] ____bigCuttableBySaberList, ref Transform ____noteTransform)
         {
-            ____noteTransform.localScale = new Vector3(1f, 1f, 1f);
+            if (Plugin.Active)
+                ____noteTransform.localScale = new Vector3(1f, 1f, 1f);
             if (__instance.noteData is GameNote)
             {
                 foreach(var bigCuttable in ____bigCuttableBySaberList)

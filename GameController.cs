@@ -12,7 +12,7 @@ namespace GameSaber
     {
         //GameObjects
         StandardLevelFailedController levelFailController;
-        BeatmapObjectCallbackController callbackController;
+        BeatmapCallbacksController callbackController;
         BeatmapObjectSpawnController spawnController;
         BeatmapObjectSpawnMovementData spawnMovementData;
         NoteCutSoundEffectManager soundEffectManager;
@@ -55,7 +55,7 @@ namespace GameSaber
             else
                 gameStartTime = songAudio.time + mapParams.gameTurnInterval + 2f;
 
-            UpdateBeatmap(Utilities.GetPlayerSelectionBeatmapObjects(gameStartTime, mapParams.gameType, mapParams.gameEndTime));
+            UpdateBeatmap(Utilities.GetPlayerSelectionBeatmapObjects(gameStartTime, mapParams.gameType, mapParams.gameEndTime), initial);
             phaseThreshold = gameStartTime + 0.5f;
         }
 
@@ -65,7 +65,6 @@ namespace GameSaber
             {
                 LoadGameObjects();
                 LoadTextSpawners();
-                SetupGameLights();
                 beatTime = 60f / BS_Utils.Plugin.LevelData.GameplayCoreSceneSetupData.difficultyBeatmap.level.beatsPerMinute;
             }
             catch (Exception ex)
@@ -81,24 +80,25 @@ namespace GameSaber
         {
             if (mapParams == null)
                 return;
+            SetupGameLights();
             _init = true;
             Plugin.Active = true;
             NewGame(true);
             BS_Utils.Utilities.BSEvents.noteWasCut += BSEvents_noteWasCut;
             BS_Utils.Utilities.BSEvents.noteWasMissed += BSEvents_noteWasMissed;
         }
-        private void BSEvents_noteWasMissed(NoteData arg1, int arg2)
+        private void BSEvents_noteWasMissed(NoteController arg1)
         {
-            if (arg1 is GameNote)
-                Logger.log.Debug($"GameNote Missed {(arg1 as GameNote).playerType}");
+            if (arg1.noteData is GameNote)
+                Logger.log.Debug($"GameNote Missed {(arg1.noteData as GameNote).playerType}");
         }
 
-        private void BSEvents_noteWasCut(NoteData arg1, NoteCutInfo arg2, int arg3)
+        private void BSEvents_noteWasCut(NoteController arg1, NoteCutInfo arg2)
         {
 
-            if (arg1 is GameNote)
+            if (arg1.noteData is GameNote)
             {
-                GameNote note = arg1 as GameNote;
+                GameNote note = arg1.noteData as GameNote;
                 if (!playerChoseType && note.selectionNum == -1)
                 {
                     StartGame(note.playerType == PlayerType.First);
@@ -224,7 +224,7 @@ namespace GameSaber
         {
             _init = false;
             await Task.Delay((int)(_game.TurnLength / 3 * 1000));
-            levelFailController.HandleLevelFailed();
+            levelFailController.InvokeMethod<object, StandardLevelFailedController>("HandleLevelFailed");
         }
         string lastComment = "";
         public void SpawnIntroText(float duration = 2f)
@@ -285,28 +285,27 @@ namespace GameSaber
             _game.Start(playerIsX, mapParams.gameTurnInterval);
         }
 
-        public void UpdateBeatmap(List<BeatmapObjectData> newObjects)
+        public void UpdateBeatmap(List<BeatmapObjectData> newObjects, bool addLists = false)
         {
-            BeatmapData beatmapData = callbackController.GetField<IReadonlyBeatmapData, BeatmapObjectCallbackController>("_beatmapData") as BeatmapData;
-            List<BeatmapObjectData> objects;
-            BeatmapLineData[] linesData = beatmapData.GetField<BeatmapLineData[], BeatmapData>("_beatmapLinesData");
-            objects = linesData[0].beatmapObjectsData.ToList();
-            objects.AddRange(newObjects);
-            objects = objects.OrderBy(o => o.time).ToList();
-            linesData[0].SetField<BeatmapLineData, List<BeatmapObjectData>>("_beatmapObjectsData", objects);
-            beatmapData.SetField<BeatmapData, BeatmapLineData[]>("_beatmapLinesData", linesData);
+            BeatmapData newBeatmapData = (callbackController.GetField<IReadonlyBeatmapData, BeatmapCallbacksController>("_beatmapData") as BeatmapData);
+            var beatmapDataItemsPerType = newBeatmapData.GetField<BeatmapDataSortedListForTypes<BeatmapDataItem>, BeatmapData>("_beatmapDataItemsPerType");
+            if(addLists)
+            {
+                beatmapDataItemsPerType.AddList<GameNote>(new SortedList<GameNote, BeatmapDataItem>(null));
+                beatmapDataItemsPerType.AddList<GameObstacle>(new SortedList<GameObstacle, BeatmapDataItem>(null));
+            }
+            foreach (var newObject in newObjects)
+                newBeatmapData.AddBeatmapObjectData(newObject);
         }
 
         public void CleanBeatmap()
         {
-            BeatmapData beatmapData = callbackController.GetField<IReadonlyBeatmapData, BeatmapObjectCallbackController>("_beatmapData") as BeatmapData;
-            List<BeatmapObjectData> objects;
-            BeatmapLineData[] linesData = beatmapData.GetField<BeatmapLineData[], BeatmapData>("_beatmapLinesData");
-            objects = linesData[0].beatmapObjectsData.ToList();
-            objects.RemoveAll(x => x is GameNote || x is GameObstacle);
-            objects = objects.OrderBy(o => o.time).ToList();
-            linesData[0].SetField<BeatmapLineData, List<BeatmapObjectData>>("_beatmapObjectsData", objects);
-            beatmapData.SetField<BeatmapData, BeatmapLineData[]>("_beatmapLinesData", linesData);
+            BeatmapData newBeatmapData = (callbackController.GetField<IReadonlyBeatmapData, BeatmapCallbacksController>("_beatmapData") as BeatmapData).GetFilteredCopy(x => {
+                if (x is GameNote || x is GameObstacle)
+                    return null;
+                return x;
+                    });
+            callbackController.SetField("_beatmapData", newBeatmapData as IReadonlyBeatmapData);
         }
         public void SpawnText(string text, float duration)
         {
@@ -321,9 +320,9 @@ namespace GameSaber
         private void LoadGameObjects()
         {
             levelFailController = Resources.FindObjectsOfTypeAll<StandardLevelFailedController>().LastOrDefault();
-            callbackController = Resources.FindObjectsOfTypeAll<BeatmapObjectCallbackController>().LastOrDefault();
             spawnController = Resources.FindObjectsOfTypeAll<BeatmapObjectSpawnController>().LastOrDefault();
             spawnMovementData = spawnController.GetField<BeatmapObjectSpawnMovementData, BeatmapObjectSpawnController>("_beatmapObjectSpawnMovementData");
+            callbackController = spawnController.GetField<BeatmapCallbacksController, BeatmapObjectSpawnController>("_beatmapCallbacksController");
             soundEffectManager = Resources.FindObjectsOfTypeAll<NoteCutSoundEffectManager>().LastOrDefault();
             audioTimeSync = Resources.FindObjectsOfTypeAll<AudioTimeSyncController>().LastOrDefault();
             songAudio = audioTimeSync.GetField<AudioSource, AudioTimeSyncController>("_audioSource");
@@ -334,7 +333,7 @@ namespace GameSaber
             LightSwitchEventEffect[] lights = Resources.FindObjectsOfTypeAll<LightSwitchEventEffect>();
             foreach (var light in lights)
             {
-                Logger.log.Info("Setting light");
+              //  Logger.log.Info("Setting light");
                 GameColorSO lightC0 = ScriptableObject.CreateInstance<GameColorSO>();
                 GameColorSO lightC1 = ScriptableObject.CreateInstance<GameColorSO>();
                 GameColorSO lightH0 = ScriptableObject.CreateInstance<GameColorSO>();

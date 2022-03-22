@@ -96,7 +96,7 @@ namespace GameSaber
                 result.Add(new GameNote(PlayerType.First, -1, time, 1500, NoteLineLayer.Base, NoteLineLayer.Base, ColorType.ColorA, NoteCutDirection.Any, 0f, 0f));
                 result.Add(new GameNote(PlayerType.Second, -1, time, 3500, NoteLineLayer.Base, NoteLineLayer.Base, ColorType.ColorB, NoteCutDirection.Any, 0f, 0f));
                 for(int i = 1; i < 9; ++i)
-                result.Add(new GameObstacle(time, IndexForColumn(i), (ObstacleType)(100 * 1000 + 0 + 4001), gameEndTime - time, 1050));
+                result.Add(new GameObstacle(time, IndexForColumn(i), 0, gameEndTime - time, 1050, 1100));
 
             }
             return result;
@@ -164,8 +164,8 @@ namespace GameSaber
                 {
                     if(i % 2 != 0 || j % 2 != 0)
                     {
-                        var gridItem = new NoteData(gridTime, i, (NoteLineLayer)j, (NoteLineLayer)j, ColorType.None, NoteCutDirection.Down, 0f, 0f, i, 0f, 0f);
-                        result.Add(gridItem);
+               //         var gridItem = new NoteData(gridTime, i, (NoteLineLayer)j, (NoteLineLayer)j, ColorType.None, NoteCutDirection.Down, 0f, 0f, i, 0f, 0f);
+                //        result.Add(gridItem);
                     }
                 }
             return result.ToArray();

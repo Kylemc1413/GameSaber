@@ -38,6 +38,7 @@ namespace GameSaber
             Active = false;
             GameController.worldRotation = Quaternion.identity;
             GameController.inverseWorldRotation = Quaternion.identity;
+
             if (!BS_Utils.Plugin.LevelData.IsSet) return;
             if (!(BS_Utils.Plugin.LevelData.GameplayCoreSceneSetupData.difficultyBeatmap.level is CustomPreviewBeatmapLevel)) return;
             if (BS_Utils.Plugin.LevelData.Mode != BS_Utils.Gameplay.Mode.Standard) return;
@@ -90,7 +91,7 @@ namespace GameSaber
             SharedCoroutineStarter.instance.StartCoroutine(DelayInit(diffParams));
 
         }
-
+        
         private IEnumerator DelayInit(GameParams.DiffGameParams mapParams)
         {
             yield return new WaitForSeconds(0.1f);
