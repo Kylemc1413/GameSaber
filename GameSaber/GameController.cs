@@ -288,14 +288,15 @@ namespace GameSaber
         public void UpdateBeatmap(List<BeatmapObjectData> newObjects, bool addLists = false)
         {
             BeatmapData newBeatmapData = (callbackController.GetField<IReadonlyBeatmapData, BeatmapCallbacksController>("_beatmapData") as BeatmapData);
-            var beatmapDataItemsPerType = newBeatmapData.GetField<BeatmapDataSortedListForTypes<BeatmapDataItem>, BeatmapData>("_beatmapDataItemsPerType");
+            var beatmapDataItemsPerType = newBeatmapData.GetField<BeatmapDataSortedListForTypeAndIds<BeatmapDataItem>, BeatmapData>("_beatmapDataItemsPerTypeAndId");
             if(addLists)
             {
-                beatmapDataItemsPerType.AddList<GameNote>(new SortedList<GameNote, BeatmapDataItem>(null));
-                beatmapDataItemsPerType.AddList<GameObstacle>(new SortedList<GameObstacle, BeatmapDataItem>(null));
+                var itemsDict = beatmapDataItemsPerType.GetField<Dictionary<ValueTuple<Type, int>, ISortedList<BeatmapDataItem>>, BeatmapDataSortedListForTypeAndIds<BeatmapDataItem>>("_items");
+                itemsDict.Add((typeof(GameNote), 1413), new SortedList<BeatmapDataItem>());
+                itemsDict.Add((typeof(GameObstacle), 1414), new SortedList<BeatmapDataItem>());
             }
             foreach (var newObject in newObjects)
-                newBeatmapData.AddBeatmapObjectData(newObject);
+                newBeatmapData.AddBeatmapObjectDataInOrder(newObject);
         }
 
         public void CleanBeatmap()

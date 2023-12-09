@@ -87,17 +87,11 @@ namespace GameSaber
                     return;
                 }
             }
-         
-            SharedCoroutineStarter.instance.StartCoroutine(DelayInit(diffParams));
 
-        }
-        
-        private IEnumerator DelayInit(GameParams.DiffGameParams mapParams)
-        {
-            yield return new WaitForSeconds(0.1f);
-            GameController.mapParams = mapParams;
+            GameController.mapParams = diffParams;
             new GameObject("GameSaber Controller").AddComponent<GameController>();
         }
+        
         [OnExit]
         public void OnApplicationQuit()
         {
